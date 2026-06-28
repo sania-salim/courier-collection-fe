@@ -1,0 +1,53 @@
+:root {
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    box-sizing: border-box;
+
+    --fontColor: #1e293b;
+    --primary: #0d9488;
+    --primary-dark: #0f766e;
+    --primary-light: #ccfbf1;
+    --accent: #6366f1;
+    --themeRed: #ef4444;
+    --themeWhite: #fff;
+    --themeBlack: #0f172a;
+    --themeLightGrey: #e2e8f0;
+    --themeDarkGrey: #0f172a;
+    --surface: #f8fafc;
+    --cardShadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+
+    color-scheme: light dark;
+    color: var(--fontColor);
+    background-color: var(--surface);
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='dark'] {
+    --fontColor: #e2e8f0;
+    --primary-light: #134e4a;
+    --surface: #0f172a;
+    --themeLightGrey: #334155;
+    --cardShadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: inherit;
+}
+
+body {
+    display: flex;
+    margin: 0 auto;
+    background-color: var(--surface);
+    min-height: 100vh;
+}
+
+#root {
+    width: 100%;
+}
