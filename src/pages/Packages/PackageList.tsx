@@ -9,28 +9,22 @@ import {
     OutlinedInput,
     Select,
     TextField,
-    Tooltip,
     Typography,
 } from '@mui/material';
-import { Add, Inventory2, PlayArrow, Search } from '@mui/icons-material';
+import { Add, Inventory2, Search } from '@mui/icons-material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Table from '@/components/Table/Table';
+import { SIMULATION_TICK_EVENT } from '@/components/SimulateJourneyButton/SimulateJourneyButton';
 import { getPackageListColumns } from '@/constants/GetPackageListColumns';
-import paths from '@/router/routes';
 import AddPackageDialog from '@/pages/Packages/AddPackageDialog';
 import { ExternalBusiness } from '@/types/business';
-import { Journey } from '@/types/journey';
 import { PackageListRow, PackageStatus } from '@/types/package';
 import { Region } from '@/types/region';
 import { getApiErrorMessage } from '@/utils/errorUtils';
-import { getActiveJourneys } from '@/utils/journeyUtils';
 import { fetchExternalBusinesses } from '@/utils/requests/business.api';
-import { fetchJourneys } from '@/utils/requests/journey.api';
 import { fetchPackages } from '@/utils/requests/package.api';
 import { fetchRegions } from '@/utils/requests/region.api';
-import { runSimulationTick } from '@/utils/requests/simulation.api';
 import { pageActionsSx, pageCardSx, pageShellSx } from '@/styles/pageLayout';
 import { PACKAGE_STATUSES, getStatusLabel } from '@/utils/statusUtils';
 
@@ -42,8 +36,6 @@ const PackageList = () => {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<PackageStatus[]>([]);
     const [packageDialogOpen, setPackageDialogOpen] = useState(false);
-    const [activeJourneys, setActiveJourneys] = useState<Journey[]>([]);
-    const [simulating, setSimulating] = useState(false);
 
     const loadData = useCallback(() => {
         setLoading(true);
@@ -51,15 +43,13 @@ const PackageList = () => {
             fetchPackages(),
             fetchRegions(),
             fetchExternalBusinesses(),
-            fetchJourneys(),
         ])
-            .then(([packagesRes, regionsRes, businessesRes, journeysRes]) => {
+            .then(([packagesRes, regionsRes, businessesRes]) => {
                 const regionMap = Object.fromEntries(
                     regionsRes.data.map((r) => [r.id, r.name])
                 );
                 setRegions(regionsRes.data);
                 setBusinesses(businessesRes.data);
-                setActiveJourneys(getActiveJourneys(journeysRes.data));
                 setPackages(
                     packagesRes.data.map((pkg) => ({
                         ...pkg,
@@ -78,31 +68,14 @@ const PackageList = () => {
             .finally(() => setLoading(false));
     }, []);
 
-    const handleSimulateJourney = async () => {
-        setSimulating(true);
-        try {
-            const { data } = await runSimulationTick(true);
-            if (data.errors.length > 0) {
-                toast.error(data.errors.join('; '));
-            } else if (data.processed === 0) {
-                toast.info(data.steps[0] ?? 'Nothing to simulate');
-            } else {
-                toast.success(data.steps.slice(0, 3).join('\n'), {
-                    style: { whiteSpace: 'pre-line' },
-                });
-            }
-            loadData();
-        } catch (err) {
-            toast.error(getApiErrorMessage(err, 'Simulation failed'));
-        } finally {
-            setSimulating(false);
-        }
-    };
-
-    const hasActiveJourney = activeJourneys.length > 0;
-
     useEffect(() => {
         loadData();
+    }, [loadData]);
+
+    useEffect(() => {
+        const onTick = () => loadData();
+        window.addEventListener(SIMULATION_TICK_EVENT, onTick);
+        return () => window.removeEventListener(SIMULATION_TICK_EVENT, onTick);
     }, [loadData]);
 
     const handleBusinessCreated = (business: ExternalBusiness) => {
@@ -130,35 +103,6 @@ const PackageList = () => {
     return (
         <Box sx={pageShellSx}>
             <Box sx={pageActionsSx}>
-                <Tooltip
-                    title={
-                        hasActiveJourney
-                            ? 'Advance the journey one step: bagging at hub, departure, or arrival'
-                            : 'Create a journey (route + vehicle) on the Journeys page first'
-                    }
-                >
-                    <span>
-                        <Button
-                            variant="outlined"
-                            startIcon={<PlayArrow />}
-                            disabled={!hasActiveJourney || simulating}
-                            onClick={handleSimulateJourney}
-                        >
-                            {simulating ? 'Simulating…' : 'Simulate journey'}
-                        </Button>
-                    </span>
-                </Tooltip>
-                {!hasActiveJourney && (
-                    <Button
-                        component={RouterLink}
-                        to={paths.JOURNEYS_PATH}
-                        variant="text"
-                        size="small"
-                        sx={{ alignSelf: 'center' }}
-                    >
-                        Add journey
-                    </Button>
-                )}
                 <Button
                     variant="contained"
                     startIcon={<Add />}

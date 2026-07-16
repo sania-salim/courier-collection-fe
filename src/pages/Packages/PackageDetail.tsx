@@ -16,17 +16,64 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import PackageTrackingMap from '@/components/PackageTrackingMap/PackageTrackingMap';
 import PackageTimeline from '@/components/PackageTimeline/PackageTimeline';
+import {
+    JourneyWithStops,
+} from '@/components/PositionTruck/PositionTruck';
 import StatusChip from '@/components/StatusChip/StatusChip';
 import paths from '@/router/routes';
 import { pageCardSx, pageShellSx } from '@/styles/pageLayout';
 import { ExternalBusiness } from '@/types/business';
+import { Journey } from '@/types/journey';
 import { CourierPackage, PackageScanLog } from '@/types/package';
 import { Region } from '@/types/region';
+import { RouteStop } from '@/types/route';
 import { formatDateTime } from '@/utils/dateUtils';
 import { getApiErrorMessage } from '@/utils/errorUtils';
 import { fetchExternalBusinesses } from '@/utils/requests/business.api';
+import { fetchJourneys } from '@/utils/requests/journey.api';
 import { fetchPackage, fetchPackageScanLogs } from '@/utils/requests/package.api';
 import { fetchRegions } from '@/utils/requests/region.api';
+
+type JourneyCandidate = Journey & {
+    route?: (Journey['route'] & { stops?: RouteStop[] }) | null;
+};
+
+const JOURNEY_STATUS_PRIORITY: Record<Journey['status'], number> = {
+    IN_PROGRESS: 0,
+    SCHEDULED: 1,
+    COMPLETED: 2,
+    CANCELLED: 3,
+};
+
+const resolveJourneyForPackage = (
+    packageData: CourierPackage,
+    journeys: JourneyCandidate[]
+): JourneyWithStops | null => {
+    const candidates = journeys
+        .filter(
+            (journey) =>
+                Boolean(journey.routeId) && journey.status !== 'CANCELLED'
+        )
+        .filter((journey) => {
+            const stops = journey.route?.stops ?? [];
+            const fromOrder = stops.find(
+                (stop) => stop.regionId === packageData.fromRegionId
+            )?.stopOrder;
+            const toOrder = stops.find(
+                (stop) => stop.regionId === packageData.toRegionId
+            )?.stopOrder;
+            return (
+                fromOrder != null && toOrder != null && toOrder > fromOrder
+            );
+        })
+        .sort(
+            (a, b) =>
+                JOURNEY_STATUS_PRIORITY[a.status] -
+                JOURNEY_STATUS_PRIORITY[b.status]
+        );
+
+    return (candidates[0] as JourneyWithStops) ?? null;
+};
 
 type DetailFieldProps = {
     label: string;
@@ -51,6 +98,7 @@ const PackageDetail = () => {
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [scanLogs, setScanLogs] = useState<PackageScanLog[]>([]);
+    const [journey, setJourney] = useState<JourneyWithStops | null>(null);
 
     const loadData = useCallback(() => {
         if (!code) return;
@@ -62,13 +110,29 @@ const PackageDetail = () => {
             fetchRegions(),
             fetchExternalBusinesses(),
             fetchPackageScanLogs(code),
+            fetchJourneys(),
         ])
-            .then(([pkgRes, regionsRes, businessesRes, scanLogsRes]) => {
-                setPkg(pkgRes.data);
-                setRegions(regionsRes.data);
-                setBusinesses(businessesRes.data);
-                setScanLogs(scanLogsRes.data);
-            })
+            .then(
+                ([
+                    pkgRes,
+                    regionsRes,
+                    businessesRes,
+                    scanLogsRes,
+                    journeysRes,
+                ]) => {
+                    const packageData = pkgRes.data;
+                    setPkg(packageData);
+                    setRegions(regionsRes.data);
+                    setBusinesses(businessesRes.data);
+                    setScanLogs(scanLogsRes.data);
+
+                    const resolvedJourney = resolveJourneyForPackage(
+                        packageData,
+                        journeysRes.data as JourneyCandidate[]
+                    );
+                    setJourney(resolvedJourney);
+                }
+            )
             .catch((err) => {
                 if (err?.response?.status === 404) {
                     setNotFound(true);
@@ -329,6 +393,9 @@ const PackageDetail = () => {
                                 toRegion={toRegion}
                                 currentRegion={currentRegion}
                                 currentRegionId={pkg.currentRegionId}
+                                routeId={journey?.routeId}
+                                packageStatus={pkg.status}
+                                journey={journey}
                             />
                         </Card>
                     ) : (

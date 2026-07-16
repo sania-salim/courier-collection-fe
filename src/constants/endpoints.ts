@@ -27,3 +27,5 @@ export const ROUTE_WITH_STOPS = (id: string) => `/routes/${id}/stops`;
 
 export const SIMULATION_STATUS = '/simulation/status';
 export const SIMULATION_TICK = '/simulation/tick';
+
+export const ROUTE_ROAD = '/routes/road-route';

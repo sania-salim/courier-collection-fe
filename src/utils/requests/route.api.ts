@@ -2,10 +2,13 @@ import {
     ROUTE_STOPS,
     ROUTE_WITH_STOPS,
     ROUTES,
+    ROUTE_ROAD,
 } from '@/constants/endpoints';
 import {
     AddRouteStopPayload,
     CreateRoutePayload,
+    FetchRoadRoutePayload,
+    RoadRouteGeoJson,
     Route,
     RouteStop,
     RouteWithStops,
@@ -22,3 +25,6 @@ export const createRoute = (payload: CreateRoutePayload) =>
 
 export const addRouteStop = (payload: AddRouteStopPayload) =>
     post<RouteStop>(ROUTE_STOPS, payload);
+
+export const fetchRouteRoad = (payload: FetchRoadRoutePayload) =>
+    post<RoadRouteGeoJson>(ROUTE_ROAD, payload);

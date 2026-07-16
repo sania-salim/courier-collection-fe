@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { DarkMode, LightMode, LocalShipping, Menu } from '@mui/icons-material';
 import { NavLink, useLocation } from 'react-router-dom';
+import SimulateJourneyButton from '@/components/SimulateJourneyButton/SimulateJourneyButton';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { StyledHeaderActionsContainer, StyledLogoMark } from './Header.style';
 import { DRAWER_WIDTH } from '../Sidebar/Sidebar';
@@ -48,8 +49,21 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
                 borderColor: 'divider',
             }}
         >
-            <Toolbar sx={{ justifyContent: 'space-between', py: 1, px: { xs: 2, md: 3 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+            <Toolbar
+                sx={{
+                    justifyContent: 'space-between',
+                    py: 1,
+                    px: { xs: 2, md: 3 },
+                }}
+            >
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        minWidth: 0,
+                    }}
+                >
                     {!isDesktop && (
                         <IconButton
                             edge="start"
@@ -82,9 +96,15 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
                                             `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
                                     }}
                                 >
-                                    <LocalShipping sx={{ color: '#fff', fontSize: 20 }} />
+                                    <LocalShipping
+                                        sx={{ color: '#fff', fontSize: 20 }}
+                                    />
                                 </Box>
-                                <Typography variant="subtitle2" fontWeight={700} noWrap>
+                                <Typography
+                                    variant="subtitle2"
+                                    fontWeight={700}
+                                    noWrap
+                                >
                                     {pageTitle}
                                 </Typography>
                             </StyledLogoMark>
@@ -93,6 +113,7 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
                 </Box>
 
                 <StyledHeaderActionsContainer>
+                    <SimulateJourneyButton />
                     <IconButton
                         title="Switch theme"
                         color="primary"

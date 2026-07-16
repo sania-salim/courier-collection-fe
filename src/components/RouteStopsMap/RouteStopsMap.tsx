@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Box } from '@mui/material';
 import {
     CircleMarker,
+    GeoJSON,
     MapContainer,
     Polyline,
     TileLayer,
@@ -9,10 +10,13 @@ import {
     useMap,
 } from 'react-leaflet';
 import { Region } from '@/types/region';
+import { RoadRouteGeoJson } from '@/types/route';
+import { fetchRouteRoad } from '@/utils/requests/route.api';
 import 'leaflet/dist/leaflet.css';
 
 type RouteStopsMapProps = {
     regions: Region[];
+    routeId?: string;
     height?: number | string;
 };
 
@@ -39,7 +43,13 @@ const FitBounds = ({ positions }: { positions: [number, number][] }) => {
     return null;
 };
 
-const RouteStopsMap = ({ regions, height = 280 }: RouteStopsMapProps) => {
+const RouteStopsMap = ({
+    regions,
+    routeId,
+    height = 280,
+}: RouteStopsMapProps) => {
+    const [roadPath, setRoadPath] = useState<RoadRouteGeoJson | null>(null);
+
     const positions = useMemo<[number, number][]>(
         () =>
             regions.map((region) => [
@@ -49,10 +59,44 @@ const RouteStopsMap = ({ regions, height = 280 }: RouteStopsMapProps) => {
         [regions]
     );
 
+    useEffect(() => {
+        if (!routeId || regions.length < 2) {
+            console.log('[RouteStopsMap] Skipping road fetch', {
+                routeId,
+                stopCount: regions.length,
+            });
+            setRoadPath(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        console.log('[RouteStopsMap] Fetching road route for', routeId);
+        fetchRouteRoad({ routeId })
+            .then((res) => {
+                if (cancelled) return;
+                const geojson = res.data;
+                const geometry = geojson.features?.[0]?.geometry;
+                console.log('[RouteStopsMap] Road route fetched', {
+                    routeId,
+                    type: geojson.type,
+                    geometry,
+                    summary: geojson.features?.[0]?.properties?.summary,
+                });
+                setRoadPath(geojson);
+            })
+            .catch((err) => {
+                console.error('[RouteStopsMap] Road route fetch failed', err);
+                if (!cancelled) setRoadPath(null);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [routeId, regions]);
+
     const center: [number, number] =
-        positions.length > 0
-            ? positions[0]
-            : [20.5937, 78.9629];
+        positions.length > 0 ? positions[0] : [20.5937, 78.9629];
 
     return (
         <Box
@@ -75,7 +119,7 @@ const RouteStopsMap = ({ regions, height = 280 }: RouteStopsMapProps) => {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <FitBounds positions={positions} />
-                {positions.length >= 2 && (
+                {!roadPath && positions.length >= 2 && (
                     <Polyline
                         positions={positions}
                         pathOptions={{
@@ -83,6 +127,13 @@ const RouteStopsMap = ({ regions, height = 280 }: RouteStopsMapProps) => {
                             weight: 4,
                             dashArray: '8 8',
                         }}
+                    />
+                )}
+                {roadPath && (
+                    <GeoJSON
+                        key={routeId}
+                        data={roadPath}
+                        style={{ color: '#6366f1', weight: 4 }}
                     />
                 )}
                 {regions.map((region, index) => (

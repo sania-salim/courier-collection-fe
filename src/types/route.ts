@@ -33,3 +33,28 @@ export type RouteListRow = Route & {
     stopCount: number;
     stopSummary: string;
 };
+
+export type RoadRouteGeoJson = {
+    type: 'FeatureCollection';
+    features: Array<{
+      type: 'Feature';
+      geometry: {
+        type: 'LineString';
+        coordinates: [number, number][]; // [lng, lat]
+      };
+      properties: {
+        summary?: {
+          distance: number; // meters
+          duration: number; // seconds
+        };
+        // ORS may include segments, etc.
+        [key: string]: unknown;
+      };
+    }>;
+  };
+
+export type FetchRoadRoutePayload = {
+    routeId: string;
+    fromRegionId?: string;
+    toRegionId?: string;
+};
